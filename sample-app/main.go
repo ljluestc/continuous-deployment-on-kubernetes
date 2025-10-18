@@ -71,17 +71,18 @@ func main() {
 
 func backendMode(port int) {
 	log.Println("Operating in backend mode...")
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		i := newInstance()
 		raw, _ := httputil.DumpRequest(r, true)
 		i.LBRequest = string(raw)
 		resp, _ := json.Marshal(i)
 		fmt.Fprintf(w, "%s", resp)
 	})
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), mux))
 
 }
 
@@ -98,7 +99,8 @@ func frontendMode(port int, backendURL string) {
 	)
 	req.Close = false
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		i := &Instance{}
 		resp, err := client.Do(req)
 		if err != nil {
@@ -122,7 +124,7 @@ func frontendMode(port int, backendURL string) {
 		tpl.Execute(w, i)
 	})
 
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		resp, err := client.Do(req)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -133,7 +135,7 @@ func frontendMode(port int, backendURL string) {
 		ioutil.ReadAll(resp.Body)
 		w.WriteHeader(http.StatusOK)
 	})
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), mux))
 }
 
 type assigner struct {
@@ -153,6 +155,8 @@ func (a *assigner) assign(getVal func() (string, error)) string {
 
 func newInstance() *Instance {
 	var i = new(Instance)
+	i.Version = version
+
 	if !metadata.OnGCE() {
 		i.Error = "Not running on GCE"
 		return i
@@ -166,7 +170,6 @@ func newInstance() *Instance {
 	i.Project = a.assign(metadata.ProjectID)
 	i.InternalIP = a.assign(metadata.InternalIP)
 	i.ExternalIP = a.assign(metadata.ExternalIP)
-	i.Version = version
 
 	if a.err != nil {
 		i.Error = a.err.Error()

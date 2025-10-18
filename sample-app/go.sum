@@ -1,0 +1,4 @@
+cloud.google.com/go v0.24.0 h1:dXbX9JusOVTZ7hxXPTN2SMJzIzO/IT8kbnWlXiSrDRI=
+cloud.google.com/go v0.24.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
+golang.org/x/net v0.0.0-20180710231904-039a4258aec0 h1:x0HPNUOUA+1KT+gHm0tgwhbPnFgaFsZqbu3/Q/6vQNI=
+golang.org/x/net v0.0.0-20180710231904-039a4258aec0/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
