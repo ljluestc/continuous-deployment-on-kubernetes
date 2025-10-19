@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-10-18T00:25:34.339666",
+  "tests": {
+    "unit": {
+      "success": false,
+      "passed": 0,
+      "failed": 0,
+      "output": "",
+      "errors": "go: inconsistent vendoring in /home/calelin/dev/continuous-deployment-on-kubernetes/sample-app:\n\tcloud.google.com/go@v0.24.0: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt\n\tgolang.org/x/net@v0.0.0-20180710231904-039a4258aec0: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt\n\tgolang.org/x/text@v0.3.0: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt\n\n\tTo ignore the vendor directory, use -mod=readonly or -mod=mod.\n\tTo sync the vendor directory, run:\n\t\tgo mod vendor\n"
+    },
+    "integration": {
+      "success": false,
+      "passed": 0,
+      "failed": 0,
+      "output": "",
+      "errors": "go: inconsistent vendoring in /home/calelin/dev/continuous-deployment-on-kubernetes/sample-app:\n\tcloud.google.com/go@v0.24.0: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt\n\tgolang.org/x/net@v0.0.0-20180710231904-039a4258aec0: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt\n\tgolang.org/x/text@v0.3.0: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt\n\n\tTo ignore the vendor directory, use -mod=readonly or -mod=mod.\n\tTo sync the vendor directory, run:\n\t\tgo mod vendor\n"
+    }
+  },
+  "coverage": {
+    "percentage": 0.0,
+    "html_report": "/home/calelin/dev/continuous-deployment-on-kubernetes/test-reports/coverage.html",
+    "function_report": "/home/calelin/dev/continuous-deployment-on-kubernetes/test-reports/coverage_functions.txt",
+    "coverage_file": "/home/calelin/dev/continuous-deployment-on-kubernetes/sample-app/coverage.out",
+    "details": ""
+  },
+  "benchmarks": {
+    "success": true,
+    "output": "",
+    "file": "/home/calelin/dev/continuous-deployment-on-kubernetes/test-reports/benchmark.txt"
+  },
+  "summary": {},
+  "static_analysis": {
+    "fmt": {
+      "success": false,
+      "files_to_format": [
+        "integration_test.go",
+        "vendor/golang.org/x/net/context/context.go",
+        "vendor/golang.org/x/net/context/ctxhttp/ctxhttp.go",
+        "vendor/golang.org/x/net/context/ctxhttp/ctxhttp_pre17.go",
+        "vendor/golang.org/x/net/context/go17.go",
+        "vendor/golang.org/x/net/context/go19.go",
+        "vendor/golang.org/x/net/context/pre_go17.go",
+        "vendor/golang.org/x/net/context/pre_go19.go"
+      ]
+    },
+    "vet": {
+      "success": false,
+      "output": "",
+      "errors": "go: inconsistent vendoring in /home/calelin/dev/continuous-deployment-on-kubernetes/sample-app:\n\tcloud.google.com/go@v0.24.0: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt\n\tgolang.org/x/net@v0.0.0-20180710231904-039a4258aec0: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt\n\tgolang.org/x/text@v0.3.0: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt\n\n\tTo ignore the vendor directory, use -mod=readonly or -mod=mod.\n\tTo sync the vendor directory, run:\n\t\tgo mod vendor\n"
+    },
+    "mod_verify": {
+      "success": true,
+      "output": "all modules verified\n"
+    }
+  }
+}

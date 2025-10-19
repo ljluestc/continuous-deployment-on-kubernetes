@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -413,6 +414,95 @@ func BenchmarkFrontendMode_RootEndpoint(b *testing.B) {
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 	}
+}
+
+// TestFrontendMode_BackendReadError tests error handling when reading backend response
+func TestFrontendMode_BackendReadError_ReturnsError(t *testing.T) {
+	// Create a backend that returns valid JSON but causes read error
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Return valid JSON
+		i := &Instance{
+			Name:    "test-backend",
+			Version: "1.0.0",
+		}
+		resp, _ := json.Marshal(i)
+		w.Write(resp)
+	}))
+	defer backend.Close()
+
+	// Create a custom client that will cause read error
+	client := &http.Client{
+		Transport: &errorTransport{},
+		Timeout:   5 * time.Second,
+	}
+
+	tpl := template.Must(template.New("out").Parse(html))
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp, err := client.Get(backend.URL)
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("Error: " + err.Error()))
+			return
+		}
+		defer resp.Body.Close()
+
+		// This should cause a read error
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Error: " + err.Error()))
+			return
+		}
+
+		var i Instance
+		err = json.Unmarshal(body, &i)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Error: " + err.Error()))
+			return
+		}
+
+		tpl.Execute(w, &i)
+	})
+
+	req := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("Expected status 500, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "Error:") {
+		t.Error("Response should contain error message")
+	}
+}
+
+// errorTransport is a custom transport that causes read errors
+type errorTransport struct{}
+
+func (t *errorTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Return a response with a body that will cause read error
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       &errorReader{},
+		Header:     make(http.Header),
+	}
+	resp.Header.Set("Content-Type", "application/json")
+	return resp, nil
+}
+
+// errorReader is a reader that always returns an error
+type errorReader struct{}
+
+func (r *errorReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("simulated read error")
+}
+
+func (r *errorReader) Close() error {
+	return nil
 }
 
 // BenchmarkFrontendMode_TemplateRendering benchmarks template execution

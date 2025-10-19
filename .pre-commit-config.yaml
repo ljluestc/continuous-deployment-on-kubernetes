@@ -1,132 +1,128 @@
-# Pre-commit hooks configuration for gceme application
-# Install: pip install pre-commit
-# Setup: pre-commit install
-# Run manually: pre-commit run --all-files
-
 repos:
-  # Go formatting
+  # Go hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: detect-private-key
+      - id: mixed-line-ending
+
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.54.2
+    hooks:
+      - id: golangci-lint
+        args: [--timeout=5m]
+
   - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
     hooks:
       - id: go-fmt
-        name: Format Go code
-        description: Runs gofmt to format Go code
-
-      - id: go-vet
-        name: Run go vet
-        description: Runs go vet for static analysis
-
       - id: go-imports
-        name: Run goimports
-        description: Updates Go import lines
-
-      - id: go-mod-tidy
-        name: Tidy go.mod
-        description: Ensures go.mod matches source code
-
-  # Go unit tests
-  - repo: local
-    hooks:
+      - id: go-vet
       - id: go-unit-tests
-        name: Run Go unit tests
-        description: Runs all unit tests with race detection
-        entry: bash -c 'cd sample-app && go test -race -short ./...'
-        language: system
-        pass_filenames: false
-        files: \.go$
+        args: [-race, -short]
+      - id: go-build
+      - id: go-mod-tidy
+      - id: go-cyclo
+        args: [-over=15]
+      - id: go-deadcode
+      - id: go-nakedret
+        args: [-l=0]
+      - id: go-errcheck
+      - id: go-gosimple
+      - id: go-goconst
+      - id: go-gocritic
+      - id: go-gosec
+      - id: go-misspell
+      - id: go-ineffassign
+      - id: go-unused
+      - id: go-staticcheck
 
-      - id: go-coverage-check
-        name: Check test coverage
-        description: Ensures test coverage meets minimum threshold
-        entry: bash -c 'cd sample-app && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | grep total | awk "{if (\$3 < 90.0) {print \"Coverage below 90%: \" \$3; exit 1} else {print \"Coverage: \" \$3}}"'
-        language: system
-        pass_filenames: false
-        files: \.go$
-
-  # Go linting
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v1.55.2
-    hooks:
-      - id: golangci-lint
-        name: Run golangci-lint
-        description: Fast linters runner for Go
-        args: ['--timeout=5m']
-
-  # Python formatting and linting
+  # Python hooks for test script
   - repo: https://github.com/psf/black
-    rev: 23.12.0
+    rev: 23.7.0
     hooks:
       - id: black
-        name: Format Python code
         language_version: python3
+        files: \.py$
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        files: \.py$
 
   - repo: https://github.com/pycqa/flake8
-    rev: 6.1.0
+    rev: 6.0.0
     hooks:
       - id: flake8
-        name: Lint Python code
-        args: ['--max-line-length=100', '--ignore=E203,W503']
+        files: \.py$
+        args: [--max-line-length=88, --extend-ignore=E203,W503]
 
-  # YAML validation
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+  - repo: https://github.com/pycqa/pylint
+    rev: v3.0.2
     hooks:
-      - id: check-yaml
-        name: Check YAML syntax
-        args: ['--safe']
+      - id: pylint
+        files: \.py$
 
-      - id: check-json
-        name: Check JSON syntax
+  # YAML hooks
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.32.0
+    hooks:
+      - id: yamllint
+        args: [-c=.yamllint]
 
-      - id: check-merge-conflict
-        name: Check for merge conflicts
+  # Docker hooks
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint
+        files: Dockerfile
 
-      - id: check-added-large-files
-        name: Check for large files
-        args: ['--maxkb=1000']
+  # Kubernetes hooks
+  - repo: https://github.com/instrumenta/kubeval
+    rev: v0.16.1
+    hooks:
+      - id: kubeval
+        files: \.yaml$
+        args: [--strict, --ignore-missing-schemas]
 
-      - id: trailing-whitespace
-        name: Trim trailing whitespace
-
-      - id: end-of-file-fixer
-        name: Fix end of files
-
-      - id: mixed-line-ending
-        name: Fix mixed line endings
-
-  # Security checks
+  # Security hooks
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
     hooks:
       - id: detect-secrets
-        name: Detect secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: package.lock.json
 
-  # Dockerfile linting
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.12.0
-    hooks:
-      - id: hadolint-docker
-        name: Lint Dockerfiles
-
-  # Markdown linting
+  # Markdown hooks
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.38.0
+    rev: v0.35.0
     hooks:
       - id: markdownlint
-        name: Lint Markdown files
-        args: ['--fix']
+        args: [--fix]
 
-# Configuration
-ci:
-  autofix_commit_msg: |
-    [pre-commit.ci] auto fixes from pre-commit hooks
+  # Shell hooks
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        files: \.sh$
 
-    for more information, see https://pre-commit.ci
-  autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
-  autoupdate_schedule: weekly
-  skip: []
-  submodules: false
+  # Terraform hooks (if using Terraform)
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.81.0
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+      - id: terraform_docs
+      - id: terraform_tflint
+      - id: terraform_tfsec

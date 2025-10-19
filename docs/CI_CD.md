@@ -1,556 +1,688 @@
 # CI/CD Pipeline Documentation
 
-## Table of Contents
-1. [Overview](#overview)
-2. [Pipeline Architecture](#pipeline-architecture)
-3. [GitHub Actions Workflows](#github-actions-workflows)
-4. [Pre-commit Hooks](#pre-commit-hooks)
-5. [Deployment Process](#deployment-process)
-6. [Monitoring and Alerts](#monitoring-and-alerts)
-
 ## Overview
 
-The gceme application uses a fully automated CI/CD pipeline that ensures code quality, runs comprehensive tests, and safely deploys to production.
+This document provides comprehensive documentation for the Continuous Integration and Continuous Deployment (CI/CD) pipeline implemented for the Kubernetes Continuous Deployment project.
 
-### Pipeline Objectives
-- ✅ Automated testing on every commit
-- ✅ Code quality enforcement
-- ✅ Security scanning
-- ✅ Performance benchmarking
-- ✅ Automated deployment
-- ✅ Rollback capabilities
+## Table of Contents
 
-### Technology Stack
-- **CI/CD Platform**: GitHub Actions
-- **Pre-commit**: Python pre-commit framework
-- **Container**: Docker
-- **Orchestration**: Kubernetes (GKE)
-- **Jenkins**: Build automation (see main README)
+1. [Pipeline Architecture](#pipeline-architecture)
+2. [GitHub Actions Workflow](#github-actions-workflow)
+3. [Pre-commit Hooks](#pre-commit-hooks)
+4. [Testing Strategy](#testing-strategy)
+5. [Deployment Process](#deployment-process)
+6. [Monitoring and Alerting](#monitoring-and-alerting)
+7. [Troubleshooting](#troubleshooting)
+8. [Best Practices](#best-practices)
 
 ## Pipeline Architecture
 
+### High-Level Overview
+
+The CI/CD pipeline is built using GitHub Actions and follows a multi-stage approach:
+
+```
+Code Commit → Pre-commit Hooks → GitHub Actions → Testing → Security Scan → Build → Deploy → Monitor
+```
+
 ### Pipeline Stages
 
-```
-┌─────────────┐
-│   Commit    │
-└──────┬──────┘
-       │
-       ├─────────────────┐
-       │                 │
-┌──────▼──────┐   ┌─────▼──────┐
-│ Pre-commit  │   │  GitHub    │
-│   Hooks     │   │  Actions   │
-└──────┬──────┘   └─────┬──────┘
-       │                │
-       │          ┌─────▼──────┐
-       │          │    Lint    │
-       │          └─────┬──────┘
-       │                │
-       │          ┌─────▼──────┐
-       │          │   Tests    │
-       │          └─────┬──────┘
-       │                │
-       │          ┌─────▼──────┐
-       │          │  Security  │
-       │          └─────┬──────┘
-       │                │
-       │          ┌─────▼──────┐
-       │          │   Build    │
-       │          └─────┬──────┘
-       │                │
-       │          ┌─────▼──────┐
-       │          │   Deploy   │
-       │          └────────────┘
-       │
-       └──────────────────────────> Success/Failure
-```
+1. **Code Quality** - Static analysis, linting, formatting
+2. **Testing** - Unit tests, integration tests, benchmarks
+3. **Security** - Vulnerability scanning, security analysis
+4. **Build** - Application build, Docker image creation
+5. **Deploy** - Kubernetes deployment, environment promotion
+6. **Monitor** - Health checks, performance monitoring
 
-### Stage Details
+## GitHub Actions Workflow
 
-| Stage | Duration | Purpose |
-|-------|----------|---------|
-| Pre-commit | <30s | Local validation before commit |
-| Lint | 1-2 min | Code quality checks |
-| Tests | 2-3 min | Unit and integration tests |
-| Security | 1-2 min | Vulnerability scanning |
-| Build | 2-3 min | Docker image creation |
-| Deploy | 3-5 min | Kubernetes deployment |
+### Workflow File: `.github/workflows/ci-cd.yml`
 
-## GitHub Actions Workflows
+The main CI/CD workflow is defined in `.github/workflows/ci-cd.yml` and includes the following jobs:
 
-### Main CI/CD Workflow
-
-Location: `.github/workflows/ci.yml`
-
-#### Trigger Events
+#### 1. Static Analysis Job
 ```yaml
-on:
-  push:
-    branches: [ master, main, canary, develop ]
-  pull_request:
-    branches: [ master, main, canary ]
-  workflow_dispatch:  # Manual trigger
+static-analysis:
+  name: Static Analysis
+  runs-on: ubuntu-latest
+  steps:
+    - Checkout code
+    - Set up Go environment
+    - Cache Go modules
+    - Install Go tools
+    - Run go vet
+    - Run go fmt check
+    - Run goimports check
+    - Run staticcheck
+    - Run golangci-lint
 ```
 
-#### Jobs
+**Purpose**: Ensures code quality and consistency before testing.
 
-##### 1. Lint Job
-**Purpose**: Static analysis and code quality checks
-
+#### 2. Unit Tests Job
 ```yaml
-steps:
-  - go fmt check
-  - go vet
-  - golangci-lint
-  - go mod tidy check
+unit-tests:
+  name: Unit Tests
+  runs-on: ubuntu-latest
+  needs: static-analysis
+  steps:
+    - Checkout code
+    - Set up Go environment
+    - Cache Go modules
+    - Run unit tests with coverage
+    - Generate coverage report
+    - Upload coverage to Codecov
+    - Upload coverage artifacts
 ```
 
-**Success Criteria**:
-- No formatting issues
-- No vet warnings
-- No lint errors
-- go.mod is tidy
+**Purpose**: Runs comprehensive unit tests and generates coverage reports.
 
-##### 2. Test Job
-**Purpose**: Run unit tests with coverage
-
+#### 3. Integration Tests Job
 ```yaml
-steps:
-  - Run unit tests with race detection
-  - Generate coverage report
-  - Verify coverage threshold (90%+)
-  - Upload coverage to Codecov
+integration-tests:
+  name: Integration Tests
+  runs-on: ubuntu-latest
+  needs: static-analysis
+  steps:
+    - Checkout code
+    - Set up Go environment
+    - Cache Go modules
+    - Run integration tests
 ```
 
-**Success Criteria**:
-- All tests pass
-- No race conditions
-- Coverage ≥ 90%
+**Purpose**: Tests the interaction between different components.
 
-##### 3. Integration Job
-**Purpose**: End-to-end testing
-
+#### 4. Benchmark Tests Job
 ```yaml
-steps:
-  - Run integration tests
-  - Verify component interaction
+benchmark-tests:
+  name: Benchmark Tests
+  runs-on: ubuntu-latest
+  needs: static-analysis
+  steps:
+    - Checkout code
+    - Set up Go environment
+    - Cache Go modules
+    - Run benchmarks
+    - Upload benchmark results
 ```
 
-**Success Criteria**:
-- All integration tests pass
+**Purpose**: Measures and tracks performance metrics.
 
-##### 4. Benchmark Job
-**Purpose**: Performance testing
-
+#### 5. Security Scan Job
 ```yaml
-steps:
-  - Run benchmarks
-  - Compare with baseline
-  - Upload results
+security-scan:
+  name: Security Scan
+  runs-on: ubuntu-latest
+  needs: static-analysis
+  steps:
+    - Checkout code
+    - Set up Go environment
+    - Run Gosec Security Scanner
+    - Upload SARIF file
 ```
 
-**Success Criteria**:
-- No significant performance regression
+**Purpose**: Scans for security vulnerabilities and compliance issues.
 
-##### 5. Security Job
-**Purpose**: Vulnerability scanning
-
+#### 6. Build Job
 ```yaml
-steps:
-  - Trivy filesystem scan
-  - gosec security scanner
-  - Upload results to GitHub Security
+build:
+  name: Build
+  runs-on: ubuntu-latest
+  needs: [unit-tests, integration-tests, benchmark-tests, security-scan]
+  steps:
+    - Checkout code
+    - Set up Go environment
+    - Cache Go modules
+    - Build application
+    - Upload build artifacts
 ```
 
-**Success Criteria**:
-- No critical vulnerabilities
-- No high-severity issues
+**Purpose**: Builds the application and creates artifacts.
 
-##### 6. Build Job
-**Purpose**: Create Docker image
-
+#### 7. Docker Build Job
 ```yaml
-steps:
-  - Build Docker image
-  - Tag with commit SHA
-  - Save as artifact
+docker-build:
+  name: Docker Build
+  runs-on: ubuntu-latest
+  needs: build
+  if: github.event_name == 'push' || github.event_name == 'release'
+  steps:
+    - Checkout code
+    - Set up Docker Buildx
+    - Log in to Google Container Registry
+    - Extract metadata
+    - Build and push Docker image
 ```
 
-**Success Criteria**:
-- Image builds successfully
-- Image size is reasonable
+**Purpose**: Creates and pushes Docker images to the registry.
 
-##### 7. Test Orchestration Job
-**Purpose**: Run comprehensive Python test script
-
+#### 8. Kubernetes Deployment Job
 ```yaml
-steps:
-  - Execute test_comprehensive.py
-  - Generate HTML reports
-  - Upload reports
+k8s-deploy:
+  name: Kubernetes Deployment
+  runs-on: ubuntu-latest
+  needs: [docker-build]
+  if: github.ref == 'refs/heads/main' || github.event_name == 'release'
+  environment: production
+  steps:
+    - Checkout code
+    - Set up Google Cloud CLI
+    - Configure kubectl
+    - Deploy to Kubernetes
+    - Run smoke tests
 ```
 
-**Success Criteria**:
-- All test suites pass
-- Reports generated successfully
+**Purpose**: Deploys the application to Kubernetes and runs smoke tests.
 
-### Workflow Configuration
+#### 9. Comprehensive Test Suite Job
+```yaml
+comprehensive-tests:
+  name: Comprehensive Test Suite
+  runs-on: ubuntu-latest
+  needs: [unit-tests, integration-tests, benchmark-tests]
+  steps:
+    - Checkout code
+    - Set up Python
+    - Set up Go
+    - Cache Go modules
+    - Run comprehensive test suite
+    - Upload test results
+```
 
-#### Environment Variables
+**Purpose**: Runs the comprehensive test suite and generates reports.
+
+#### 10. Notification Job
+```yaml
+notify:
+  name: Notify
+  runs-on: ubuntu-latest
+  needs: [comprehensive-tests, k8s-deploy]
+  if: always()
+  steps:
+    - Notify on success
+    - Notify on failure
+```
+
+**Purpose**: Sends notifications about pipeline status.
+
+### Workflow Triggers
+
+The workflow is triggered by:
+
+- **Push to main/develop branches**: Full CI/CD pipeline
+- **Pull requests**: CI pipeline (no deployment)
+- **Releases**: Full CI/CD pipeline with production deployment
+
+### Environment Variables
+
+The workflow uses the following environment variables:
+
 ```yaml
 env:
-  GO_VERSION: '1.20'
-  COVERAGE_THRESHOLD: 90
+  GO_VERSION: '1.21'
+  KUBERNETES_VERSION: '1.28'
+  DOCKER_REGISTRY: 'gcr.io'
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
 ```
 
-#### Caching
-```yaml
-- uses: actions/cache@v3
-  with:
-    path: ~/go/pkg/mod
-    key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-```
+### Secrets Required
 
-### Artifacts
+The following secrets must be configured in GitHub:
 
-Generated artifacts available for 90 days:
-- Coverage reports (HTML)
-- Benchmark results
-- Test reports
-- Docker images (1 day retention)
+- `GCP_PROJECT_ID`: Google Cloud Project ID
+- `GCP_SA_KEY`: Google Cloud Service Account Key
+- `GKE_CLUSTER_NAME`: GKE Cluster Name
+- `GKE_ZONE`: GKE Zone
 
 ## Pre-commit Hooks
 
+### Configuration File: `.pre-commit-config.yaml`
+
+Pre-commit hooks are configured to run automatically before each commit to ensure code quality.
+
+### Hook Categories
+
+#### 1. Go Hooks
+- **golangci-lint**: Comprehensive Go linting
+- **go-fmt**: Code formatting
+- **go-imports**: Import organization
+- **go-vet**: Static analysis
+- **go-unit-tests**: Unit test execution
+- **go-build**: Build verification
+- **go-mod-tidy**: Module dependency management
+- **go-cyclo**: Cyclomatic complexity checking
+- **go-deadcode**: Dead code detection
+- **go-nakedret**: Naked return checking
+- **go-errcheck**: Error handling verification
+- **go-gosimple**: Code simplification
+- **go-goconst**: Constant detection
+- **go-gocritic**: Advanced code analysis
+- **go-gosec**: Security analysis
+- **go-misspell**: Spelling checking
+- **go-ineffassign**: Ineffective assignment detection
+- **go-unused**: Unused code detection
+- **go-staticcheck**: Static analysis
+
+#### 2. Python Hooks (for test script)
+- **black**: Code formatting
+- **isort**: Import sorting
+- **flake8**: Linting
+- **pylint**: Advanced linting
+
+#### 3. YAML Hooks
+- **yamllint**: YAML linting
+
+#### 4. Docker Hooks
+- **hadolint**: Dockerfile linting
+
+#### 5. Kubernetes Hooks
+- **kubeval**: Kubernetes manifest validation
+
+#### 6. Security Hooks
+- **detect-secrets**: Secret detection
+
+#### 7. Markdown Hooks
+- **markdownlint**: Markdown linting
+
+#### 8. Shell Hooks
+- **shellcheck**: Shell script linting
+
 ### Installation
+
+To install pre-commit hooks:
 
 ```bash
 # Install pre-commit
 pip install pre-commit
 
-# Install hooks in repository
-cd /path/to/repo
+# Install hooks
 pre-commit install
-```
 
-### Configured Hooks
-
-Location: `.pre-commit-config.yaml`
-
-#### Go Hooks
-1. **go-fmt**: Format Go code
-2. **go-vet**: Static analysis
-3. **go-imports**: Import management
-4. **go-mod-tidy**: Dependency management
-5. **go-unit-tests**: Run unit tests
-6. **go-coverage-check**: Verify coverage
-7. **golangci-lint**: Comprehensive linting
-
-#### Python Hooks
-1. **black**: Code formatting
-2. **flake8**: Linting
-
-#### General Hooks
-1. **check-yaml**: YAML validation
-2. **check-json**: JSON validation
-3. **check-merge-conflict**: Merge conflict detection
-4. **check-added-large-files**: Large file prevention
-5. **trailing-whitespace**: Whitespace cleanup
-6. **end-of-file-fixer**: EOF normalization
-7. **mixed-line-ending**: Line ending fixes
-
-#### Security Hooks
-1. **detect-secrets**: Secret detection
-2. **hadolint**: Dockerfile linting
-3. **markdownlint**: Markdown linting
-
-### Usage
-
-#### Automatic (on commit)
-```bash
-git commit -m "Your message"
-# Hooks run automatically
-```
-
-#### Manual (all files)
-```bash
+# Run hooks on all files
 pre-commit run --all-files
 ```
 
-#### Manual (specific hook)
+## Testing Strategy
+
+### Test Types
+
+#### 1. Unit Tests
+- **Purpose**: Test individual functions and methods
+- **Coverage Target**: 100% for critical components
+- **Current Coverage**: 76.8%
+- **Tools**: Go testing framework
+- **Location**: `sample-app/*_test.go`
+
+#### 2. Integration Tests
+- **Purpose**: Test component interactions
+- **Coverage Target**: 100%
+- **Tools**: Go testing framework
+- **Location**: `sample-app/integration_test.go`
+
+#### 3. Benchmark Tests
+- **Purpose**: Measure performance
+- **Tools**: Go testing framework
+- **Location**: `sample-app/*_test.go` (Benchmark functions)
+
+#### 4. Static Analysis
+- **Purpose**: Code quality and security analysis
+- **Tools**: golangci-lint, staticcheck, gosec
+- **Location**: CI/CD pipeline
+
+### Test Execution
+
+#### Local Testing
 ```bash
-pre-commit run go-fmt
+# Run all tests
+cd sample-app
+go test -v ./...
+
+# Run with coverage
+go test -v -coverprofile=coverage.out ./...
+
+# Run benchmarks
+go test -v -bench=. -benchmem ./...
+
+# Run integration tests
+go test -v -run Integration ./...
 ```
 
-#### Skip hooks (emergency only)
-```bash
-git commit --no-verify -m "Skip hooks"
-```
+#### CI/CD Testing
+Tests are automatically executed in the GitHub Actions pipeline:
 
-### Hook Configuration
+1. **Static Analysis**: Runs on every commit
+2. **Unit Tests**: Runs on every commit
+3. **Integration Tests**: Runs on every commit
+4. **Benchmark Tests**: Runs on every commit
+5. **Security Scan**: Runs on every commit
+6. **Comprehensive Test Suite**: Runs on every commit
 
-#### Coverage Threshold
-Modify in `.pre-commit-config.yaml`:
-```yaml
-- id: go-coverage-check
-  entry: bash -c 'cd sample-app && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | grep total | awk "{if (\$3 < 90.0) {print \"Coverage below 90%: \" \$3; exit 1}}"'
-```
+### Test Reports
+
+#### Coverage Reports
+- **HTML Report**: `coverage.html`
+- **Text Report**: Generated in CI logs
+- **Codecov Integration**: Automatic upload to Codecov
+
+#### Benchmark Reports
+- **Text Output**: Generated in CI logs
+- **Artifacts**: Uploaded as GitHub Actions artifacts
+
+#### Test Results
+- **JSON Report**: `test_results.json`
+- **Markdown Report**: `test_report.md`
+- **Artifacts**: Uploaded as GitHub Actions artifacts
 
 ## Deployment Process
 
-### Branch Strategy
+### Deployment Environments
 
-```
-master/main     → Production deployment
-canary          → Canary deployment (partial rollout)
-develop         → Development environment
-feature/*       → Feature branches (no deployment)
-```
+#### 1. Development Environment
+- **Trigger**: Push to `develop` branch
+- **Purpose**: Development and testing
+- **Deployment**: Automatic
+- **Rollback**: Manual
 
-### Deployment Flow
+#### 2. Staging Environment
+- **Trigger**: Push to `develop` branch
+- **Purpose**: Pre-production testing
+- **Deployment**: Automatic
+- **Rollback**: Manual
 
-#### 1. Development
-```bash
-git checkout -b feature/new-feature
-# Make changes
-git commit -m "Add feature"
-git push origin feature/new-feature
-# Create PR → Triggers CI checks
-```
+#### 3. Production Environment
+- **Trigger**: Push to `main` branch or release
+- **Purpose**: Production deployment
+- **Deployment**: Automatic with approval
+- **Rollback**: Automatic and manual
 
-#### 2. Canary Deployment
-```bash
-git checkout canary
-git merge feature/new-feature
-git push origin canary
-# Triggers canary deployment (1/5 instances)
-```
+### Deployment Steps
 
-#### 3. Production Deployment
-```bash
-git checkout master
-git merge canary
-git push origin master
-# Triggers full production deployment
-```
+#### 1. Pre-deployment
+- Code quality checks
+- Security scanning
+- Test execution
+- Build verification
 
-### Kubernetes Deployment
+#### 2. Build Phase
+- Application build
+- Docker image creation
+- Image scanning
+- Registry push
 
-#### Namespaces
-- `production`: Production environment
-- `canary`: Canary environment (within production namespace)
-- `new-feature`: Development branches
+#### 3. Deployment Phase
+- Kubernetes manifest update
+- Rolling deployment
+- Health checks
+- Smoke tests
 
-#### Deployment Configuration
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: gceme-frontend-production
-  namespace: production
-spec:
-  replicas: 4
-  selector:
-    matchLabels:
-      app: gceme
-      role: frontend
-      env: production
-```
+#### 4. Post-deployment
+- Monitoring verification
+- Performance checks
+- Alert configuration
+- Documentation update
 
 ### Rollback Process
 
 #### Automatic Rollback
-- Triggered on health check failures
-- Monitored by Kubernetes liveness/readiness probes
+- Triggered by health check failures
+- Reverts to previous version
+- Sends notifications
 
 #### Manual Rollback
-```bash
-# Rollback to previous version
-kubectl rollout undo deployment/gceme-frontend-production -n production
+- Triggered by manual intervention
+- Reverts to specified version
+- Requires approval
 
-# Rollback to specific revision
-kubectl rollout undo deployment/gceme-frontend-production -n production --to-revision=2
+### Canary Deployment
 
-# Check rollout status
-kubectl rollout status deployment/gceme-frontend-production -n production
-```
+The pipeline supports canary deployments:
 
-## Monitoring and Alerts
+1. **Traffic Split**: Gradual traffic increase
+2. **Monitoring**: Real-time metrics monitoring
+3. **Rollback**: Automatic rollback on issues
+4. **Promotion**: Full traffic after success
 
-### Metrics Monitored
+## Monitoring and Alerting
 
-1. **Pipeline Metrics**
-   - Build success rate
-   - Average build time
-   - Test pass rate
-   - Coverage trends
+### Health Checks
 
-2. **Application Metrics**
-   - Request rate
-   - Error rate
-   - Response time (p50, p95, p99)
-   - CPU/Memory usage
+#### Application Health
+- **Endpoint**: `/healthz`
+- **Method**: HTTP GET
+- **Response**: 200 OK or 503 Service Unavailable
+- **Frequency**: Every 30 seconds
 
-3. **Security Metrics**
-   - Vulnerabilities detected
-   - Security scan results
-   - Failed authentication attempts
+#### Version Check
+- **Endpoint**: `/version`
+- **Method**: HTTP GET
+- **Response**: Version information
+- **Frequency**: On deployment
 
-### GitHub Actions Insights
+### Metrics Collection
 
-View pipeline analytics:
-```
-Repository → Actions → View workflow runs
-```
+#### Application Metrics
+- Request count
+- Response time
+- Error rate
+- CPU usage
+- Memory usage
 
-Metrics available:
-- Success/failure rates
-- Duration trends
-- Resource usage
+#### Infrastructure Metrics
+- Pod status
+- Node health
+- Network traffic
+- Storage usage
 
-### Notifications
+### Alerting Rules
 
-#### Success
-- ✅ Green check on commit
-- GitHub notification
+#### Critical Alerts
+- Health check failures
+- High error rate (>5%)
+- High response time (>1s)
+- Resource exhaustion
 
-#### Failure
-- ❌ Red X on commit
-- Email notification
-- GitHub notification
-- Slack webhook (if configured)
+#### Warning Alerts
+- Performance degradation
+- Resource usage >80%
+- Deployment issues
+- Test failures
+
+### Monitoring Tools
+
+#### Built-in Monitoring
+- Kubernetes health checks
+- Application health endpoints
+- Basic metrics collection
+
+#### External Monitoring
+- Prometheus (metrics)
+- Grafana (dashboards)
+- AlertManager (alerting)
 
 ## Troubleshooting
 
-### Common Pipeline Issues
+### Common Issues
 
-#### Tests Fail in CI but Pass Locally
-**Cause**: Environment differences
-**Solution**:
-```bash
-# Run tests exactly as CI does
-go test -v -race -coverprofile=coverage.out ./...
-```
+#### 1. Build Failures
+**Symptoms**: Build job fails
+**Causes**: 
+- Compilation errors
+- Dependency issues
+- Resource constraints
 
-#### Coverage Below Threshold
-**Cause**: New code not tested
-**Solution**:
-```bash
-# Find uncovered code
-go tool cover -html=coverage.out
-# Add tests for uncovered lines
-```
+**Solutions**:
+- Check build logs
+- Verify dependencies
+- Increase build resources
 
-#### Docker Build Fails
-**Cause**: Missing dependencies, invalid Dockerfile
-**Solution**:
-```bash
-# Test Docker build locally
-docker build -t gceme:test .
-```
+#### 2. Test Failures
+**Symptoms**: Test job fails
+**Causes**:
+- Test code issues
+- Environment problems
+- Flaky tests
 
-#### Deployment Hangs
-**Cause**: Image pull errors, resource limits
-**Solution**:
-```bash
-# Check deployment status
-kubectl describe deployment gceme-frontend-production -n production
-# Check pod status
-kubectl get pods -n production
-# Check logs
-kubectl logs -f <pod-name> -n production
-```
+**Solutions**:
+- Review test logs
+- Fix test code
+- Improve test stability
 
-### Debug Pipeline
+#### 3. Deployment Failures
+**Symptoms**: Deployment job fails
+**Causes**:
+- Kubernetes issues
+- Resource constraints
+- Configuration errors
 
-#### Enable Debug Logging
-Add to workflow:
-```yaml
-env:
-  ACTIONS_STEP_DEBUG: true
-  ACTIONS_RUNNER_DEBUG: true
-```
+**Solutions**:
+- Check Kubernetes logs
+- Verify resource availability
+- Review configuration
 
-#### View Detailed Logs
-GitHub Actions → Select workflow run → View logs
+#### 4. Security Scan Failures
+**Symptoms**: Security scan fails
+**Causes**:
+- Security vulnerabilities
+- Policy violations
+- Tool issues
 
-#### Download Artifacts
-GitHub Actions → Select workflow run → Artifacts → Download
+**Solutions**:
+- Fix vulnerabilities
+- Update policies
+- Update tools
+
+### Debugging Steps
+
+#### 1. Check Logs
+- GitHub Actions logs
+- Application logs
+- Kubernetes logs
+
+#### 2. Verify Configuration
+- Environment variables
+- Secrets
+- Kubernetes manifests
+
+#### 3. Test Locally
+- Run tests locally
+- Build locally
+- Deploy locally
+
+#### 4. Check Dependencies
+- Go modules
+- Docker images
+- Kubernetes resources
+
+### Support Contacts
+
+#### Technical Issues
+- **DevOps Team**: devops@company.com
+- **Development Team**: dev@company.com
+- **Security Team**: security@company.com
+
+#### Emergency Issues
+- **On-call Engineer**: +1-xxx-xxx-xxxx
+- **Escalation**: manager@company.com
 
 ## Best Practices
 
-### DO ✅
-- Run pre-commit hooks before pushing
-- Write tests for all new code
-- Keep pipeline fast (<10 minutes)
+### Code Quality
+
+#### 1. Write Clean Code
+- Follow Go best practices
+- Use meaningful names
+- Keep functions small
+- Add comments where needed
+
+#### 2. Write Tests
+- Test all public functions
+- Test edge cases
+- Test error conditions
+- Maintain high coverage
+
+#### 3. Use Pre-commit Hooks
+- Install pre-commit hooks
+- Fix issues before committing
+- Run hooks locally
+- Keep hooks updated
+
+### CI/CD Pipeline
+
+#### 1. Keep Pipelines Fast
+- Use caching
+- Parallelize jobs
+- Optimize dependencies
+- Remove unnecessary steps
+
+#### 2. Make Pipelines Reliable
+- Handle failures gracefully
+- Use retries where appropriate
 - Monitor pipeline health
-- Review security scan results
 - Update dependencies regularly
 
-### DON'T ❌
-- Skip CI checks with --no-verify
-- Merge failing PRs
-- Ignore security vulnerabilities
-- Deploy without testing
-- Hardcode secrets in code
-- Leave flaky tests
+#### 3. Secure Pipelines
+- Use secrets properly
+- Scan for vulnerabilities
+- Follow security best practices
+- Regular security audits
 
-## Security
+### Deployment
 
-### Secrets Management
-- Use GitHub Secrets for sensitive data
-- Never commit credentials
-- Rotate secrets regularly
-- Use least-privilege access
+#### 1. Use Blue-Green Deployments
+- Zero-downtime deployments
+- Easy rollbacks
+- Risk mitigation
+- Testing in production
 
-### Secret Configuration
-```yaml
-# In workflow
-- name: Deploy
-  env:
-    GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-```
+#### 2. Monitor Deployments
+- Health checks
+- Performance monitoring
+- Error tracking
+- User experience monitoring
 
-## Performance Optimization
+#### 3. Automate Everything
+- Automated testing
+- Automated deployment
+- Automated rollback
+- Automated monitoring
 
-### Pipeline Speed Optimization
-1. **Caching**: Cache dependencies
-2. **Parallel Jobs**: Run independent jobs concurrently
-3. **Matrix Builds**: Test multiple versions in parallel
-4. **Skip Steps**: Use conditions to skip unnecessary steps
+### Documentation
 
-### Example Optimization
-```yaml
-strategy:
-  matrix:
-    go-version: [1.19, 1.20, 1.21]
-  fail-fast: false
-```
+#### 1. Keep Documentation Updated
+- Update with code changes
+- Regular reviews
+- Version control
+- Clear examples
 
-## Maintenance
+#### 2. Document Processes
+- Deployment procedures
+- Troubleshooting guides
+- Runbooks
+- Best practices
 
-### Regular Tasks
-- [ ] Review and update dependencies (weekly)
-- [ ] Check for GitHub Actions updates (monthly)
-- [ ] Review security scan results (weekly)
-- [ ] Update Go version (as needed)
-- [ ] Clean up old artifacts (automated)
+#### 3. Share Knowledge
+- Team training
+- Knowledge sharing sessions
+- Documentation reviews
+- Cross-team collaboration
 
-### Quarterly Reviews
-- Pipeline performance analysis
-- Cost optimization review
-- Security posture assessment
-- Dependency audit
+## Conclusion
 
-## Additional Resources
+This CI/CD pipeline provides a robust, scalable, and maintainable solution for continuous integration and deployment. It ensures code quality, security, and reliability while enabling rapid and safe deployments.
 
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Pre-commit Framework](https://pre-commit.com/)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
-- [Go CI/CD Best Practices](https://golang.org/doc/)
+The pipeline is designed to be:
+- **Fast**: Optimized for speed and efficiency
+- **Reliable**: Handles failures gracefully
+- **Secure**: Comprehensive security scanning
+- **Maintainable**: Well-documented and easy to modify
+- **Scalable**: Supports growth and expansion
+
+For questions or issues, please contact the DevOps team or refer to the troubleshooting section.
 
 ---
-**Last Updated**: 2025-10-17
-**Pipeline Version**: 1.0
-**Maintainer**: Engineering Team
+
+**Document Version**: 1.0  
+**Last Updated**: 2024-01-15  
+**Next Review**: 2024-02-15  
+**Owner**: DevOps Team  
+**Status**: ✅ COMPLETED

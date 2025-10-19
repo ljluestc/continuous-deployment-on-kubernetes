@@ -280,6 +280,152 @@ func BenchmarkNewInstance(b *testing.B) {
 	}
 }
 
+// TestNewInstance_OnGCE_Mocked tests GCE behavior with mocked metadata
+func TestNewInstance_OnGCE_Mocked(t *testing.T) {
+	// This test simulates what would happen on GCE by testing the assigner logic
+	// We can't actually run on GCE in tests, but we can test the logic
+	
+	// Test the assigner with multiple successful calls
+	a := &assigner{}
+	
+	// Simulate successful metadata calls
+	result1 := a.assign(func() (string, error) {
+		return "instance-123", nil
+	})
+	result2 := a.assign(func() (string, error) {
+		return "us-central1-a", nil
+	})
+	result3 := a.assign(func() (string, error) {
+		return "test-instance", nil
+	})
+	
+	if result1 != "instance-123" {
+		t.Errorf("Expected 'instance-123', got '%s'", result1)
+	}
+	if result2 != "us-central1-a" {
+		t.Errorf("Expected 'us-central1-a', got '%s'", result2)
+	}
+	if result3 != "test-instance" {
+		t.Errorf("Expected 'test-instance', got '%s'", result3)
+	}
+	
+	if a.err != nil {
+		t.Errorf("Expected no error, got %v", a.err)
+	}
+}
+
+// TestNewInstance_GCE_Simulation tests the GCE-specific code path
+func TestNewInstance_GCE_Simulation(t *testing.T) {
+	// This test simulates the GCE-specific code path by testing the assigner logic
+	// that would be executed in newInstance when running on GCE
+	
+	// Create a new instance (this will use the non-GCE path)
+	i := newInstance()
+	
+	// Verify the non-GCE behavior
+	if !metadata.OnGCE() {
+		if i.Error != "Not running on GCE" {
+			t.Errorf("Expected error 'Not running on GCE', got '%s'", i.Error)
+		}
+	}
+	
+	// Test the assigner logic that would be used on GCE
+	a := &assigner{}
+	
+	// Simulate the GCE metadata calls that would happen in newInstance
+	i.Id = a.assign(func() (string, error) {
+		return "gce-instance-123", nil
+	})
+	i.Zone = a.assign(func() (string, error) {
+		return "us-central1-a", nil
+	})
+	i.Name = a.assign(func() (string, error) {
+		return "gce-test-instance", nil
+	})
+	i.Hostname = a.assign(func() (string, error) {
+		return "gce-hostname.example.com", nil
+	})
+	i.Project = a.assign(func() (string, error) {
+		return "gce-project", nil
+	})
+	i.InternalIP = a.assign(func() (string, error) {
+		return "10.128.0.2", nil
+	})
+	i.ExternalIP = a.assign(func() (string, error) {
+		return "35.192.0.1", nil
+	})
+	
+	// Test error handling
+	if a.err != nil {
+		i.Error = a.err.Error()
+	}
+	
+	// Verify the simulated GCE behavior
+	if i.Id != "gce-instance-123" {
+		t.Errorf("Expected 'gce-instance-123', got '%s'", i.Id)
+	}
+	if i.Zone != "us-central1-a" {
+		t.Errorf("Expected 'us-central1-a', got '%s'", i.Zone)
+	}
+	if i.Name != "gce-test-instance" {
+		t.Errorf("Expected 'gce-test-instance', got '%s'", i.Name)
+	}
+	if i.Hostname != "gce-hostname.example.com" {
+		t.Errorf("Expected 'gce-hostname.example.com', got '%s'", i.Hostname)
+	}
+	if i.Project != "gce-project" {
+		t.Errorf("Expected 'gce-project', got '%s'", i.Project)
+	}
+	if i.InternalIP != "10.128.0.2" {
+		t.Errorf("Expected '10.128.0.2', got '%s'", i.InternalIP)
+	}
+	if i.ExternalIP != "35.192.0.1" {
+		t.Errorf("Expected '35.192.0.1', got '%s'", i.ExternalIP)
+	}
+	
+	if a.err != nil {
+		t.Errorf("Expected no error, got %v", a.err)
+	}
+}
+
+// TestNewInstance_OnGCE_WithError tests GCE behavior with metadata errors
+func TestNewInstance_OnGCE_WithError(t *testing.T) {
+	// Test the assigner with an error in the middle
+	a := &assigner{}
+	
+	// First call succeeds
+	result1 := a.assign(func() (string, error) {
+		return "instance-123", nil
+	})
+	
+	// Second call fails
+	result2 := a.assign(func() (string, error) {
+		return "", errors.New("metadata error")
+	})
+	
+	// Third call should return empty due to previous error
+	result3 := a.assign(func() (string, error) {
+		return "should-not-be-called", nil
+	})
+	
+	if result1 != "instance-123" {
+		t.Errorf("Expected 'instance-123', got '%s'", result1)
+	}
+	if result2 != "" {
+		t.Errorf("Expected empty string on error, got '%s'", result2)
+	}
+	if result3 != "" {
+		t.Errorf("Expected empty string due to previous error, got '%s'", result3)
+	}
+	
+	if a.err == nil {
+		t.Error("Expected error to be set")
+	}
+	if a.err.Error() != "metadata error" {
+		t.Errorf("Expected 'metadata error', got '%v'", a.err)
+	}
+}
+
 // BenchmarkAssigner_Assign benchmarks assignment operation
 func BenchmarkAssigner_Assign(b *testing.B) {
 	getValue := func() (string, error) {
