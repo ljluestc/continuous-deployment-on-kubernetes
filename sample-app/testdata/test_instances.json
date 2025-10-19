@@ -1,0 +1,32 @@
+[
+  {
+    "name": "gce-instance-1",
+    "version": "1.0.0",
+    "id": "gce-123456",
+    "zone": "us-central1-a",
+    "project": "my-gcp-project",
+    "hostname": "instance-1.example.com",
+    "internal_ip": "10.128.0.2",
+    "external_ip": "35.192.0.1"
+  },
+  {
+    "name": "gce-instance-2",
+    "version": "1.0.0",
+    "id": "gce-789012",
+    "zone": "us-central1-b",
+    "project": "my-gcp-project",
+    "hostname": "instance-2.example.com",
+    "internal_ip": "10.128.0.3",
+    "external_ip": "35.192.0.2"
+  },
+  {
+    "name": "gce-instance-3",
+    "version": "1.0.0",
+    "id": "gce-345678",
+    "zone": "us-central1-c",
+    "project": "my-gcp-project",
+    "hostname": "instance-3.example.com",
+    "internal_ip": "10.128.0.4",
+    "external_ip": "35.192.0.3"
+  }
+]

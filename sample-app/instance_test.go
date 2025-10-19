@@ -1,3 +1,6 @@
+//go:build unit
+// +build unit
+
 /**
 # Copyright 2015 Google Inc. All rights reserved.
 #
@@ -284,10 +287,10 @@ func BenchmarkNewInstance(b *testing.B) {
 func TestNewInstance_OnGCE_Mocked(t *testing.T) {
 	// This test simulates what would happen on GCE by testing the assigner logic
 	// We can't actually run on GCE in tests, but we can test the logic
-	
+
 	// Test the assigner with multiple successful calls
 	a := &assigner{}
-	
+
 	// Simulate successful metadata calls
 	result1 := a.assign(func() (string, error) {
 		return "instance-123", nil
@@ -298,7 +301,7 @@ func TestNewInstance_OnGCE_Mocked(t *testing.T) {
 	result3 := a.assign(func() (string, error) {
 		return "test-instance", nil
 	})
-	
+
 	if result1 != "instance-123" {
 		t.Errorf("Expected 'instance-123', got '%s'", result1)
 	}
@@ -308,7 +311,7 @@ func TestNewInstance_OnGCE_Mocked(t *testing.T) {
 	if result3 != "test-instance" {
 		t.Errorf("Expected 'test-instance', got '%s'", result3)
 	}
-	
+
 	if a.err != nil {
 		t.Errorf("Expected no error, got %v", a.err)
 	}
@@ -318,20 +321,20 @@ func TestNewInstance_OnGCE_Mocked(t *testing.T) {
 func TestNewInstance_GCE_Simulation(t *testing.T) {
 	// This test simulates the GCE-specific code path by testing the assigner logic
 	// that would be executed in newInstance when running on GCE
-	
+
 	// Create a new instance (this will use the non-GCE path)
 	i := newInstance()
-	
+
 	// Verify the non-GCE behavior
 	if !metadata.OnGCE() {
 		if i.Error != "Not running on GCE" {
 			t.Errorf("Expected error 'Not running on GCE', got '%s'", i.Error)
 		}
 	}
-	
+
 	// Test the assigner logic that would be used on GCE
 	a := &assigner{}
-	
+
 	// Simulate the GCE metadata calls that would happen in newInstance
 	i.Id = a.assign(func() (string, error) {
 		return "gce-instance-123", nil
@@ -354,12 +357,12 @@ func TestNewInstance_GCE_Simulation(t *testing.T) {
 	i.ExternalIP = a.assign(func() (string, error) {
 		return "35.192.0.1", nil
 	})
-	
+
 	// Test error handling
 	if a.err != nil {
 		i.Error = a.err.Error()
 	}
-	
+
 	// Verify the simulated GCE behavior
 	if i.Id != "gce-instance-123" {
 		t.Errorf("Expected 'gce-instance-123', got '%s'", i.Id)
@@ -382,7 +385,7 @@ func TestNewInstance_GCE_Simulation(t *testing.T) {
 	if i.ExternalIP != "35.192.0.1" {
 		t.Errorf("Expected '35.192.0.1', got '%s'", i.ExternalIP)
 	}
-	
+
 	if a.err != nil {
 		t.Errorf("Expected no error, got %v", a.err)
 	}
@@ -392,22 +395,22 @@ func TestNewInstance_GCE_Simulation(t *testing.T) {
 func TestNewInstance_OnGCE_WithError(t *testing.T) {
 	// Test the assigner with an error in the middle
 	a := &assigner{}
-	
+
 	// First call succeeds
 	result1 := a.assign(func() (string, error) {
 		return "instance-123", nil
 	})
-	
+
 	// Second call fails
 	result2 := a.assign(func() (string, error) {
 		return "", errors.New("metadata error")
 	})
-	
+
 	// Third call should return empty due to previous error
 	result3 := a.assign(func() (string, error) {
 		return "should-not-be-called", nil
 	})
-	
+
 	if result1 != "instance-123" {
 		t.Errorf("Expected 'instance-123', got '%s'", result1)
 	}
@@ -417,7 +420,7 @@ func TestNewInstance_OnGCE_WithError(t *testing.T) {
 	if result3 != "" {
 		t.Errorf("Expected empty string due to previous error, got '%s'", result3)
 	}
-	
+
 	if a.err == nil {
 		t.Error("Expected error to be set")
 	}

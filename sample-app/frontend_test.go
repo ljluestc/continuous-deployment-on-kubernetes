@@ -1,3 +1,6 @@
+//go:build unit
+// +build unit
+
 /**
 # Copyright 2015 Google Inc. All rights reserved.
 #
@@ -343,11 +346,22 @@ func TestFrontendMode_ConcurrentRequests_HandleMultiple(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, _ := client.Get(backend.URL)
+		resp, err := client.Get(backend.URL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		defer resp.Body.Close()
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		var i Instance
-		json.Unmarshal(body, &i)
+		if err := json.Unmarshal(body, &i); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		tpl.Execute(w, &i)
 	})
 
@@ -399,11 +413,22 @@ func BenchmarkFrontendMode_RootEndpoint(b *testing.B) {
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, _ := client.Get(backend.URL)
+		resp, err := client.Get(backend.URL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		defer resp.Body.Close()
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		var i Instance
-		json.Unmarshal(body, &i)
+		if err := json.Unmarshal(body, &i); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		tpl.Execute(w, &i)
 	})
 

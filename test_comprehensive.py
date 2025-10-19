@@ -82,6 +82,21 @@ class TestRunner:
             for line in lines:
                 if "coverage:" in line:
                     print(f"📊 {line.strip()}")
+                    # Extract coverage percentage
+                    if "coverage:" in line and "%" in line:
+                        try:
+                            coverage_str = line.split("coverage:")[1].split("%")[0].strip()
+                            coverage = float(coverage_str)
+                            if coverage >= 90:
+                                print(f"🎉 Excellent coverage: {coverage}%")
+                            elif coverage >= 80:
+                                print(f"✅ Good coverage: {coverage}%")
+                            elif coverage >= 70:
+                                print(f"⚠️  Acceptable coverage: {coverage}% (target: 80%)")
+                            else:
+                                print(f"❌ Low coverage: {coverage}% (minimum: 70%)")
+                        except (ValueError, IndexError):
+                            pass
         else:
             print(f"❌ Unit tests failed: {stderr}")
         
@@ -94,7 +109,7 @@ class TestRunner:
         # Run integration tests specifically
         cmd = [
             "go", "test", "-v", "-race",
-            "-run", "Integration",
+            "-tags", "integration",
             "-mod=readonly",
             "./..."
         ]
@@ -119,8 +134,9 @@ class TestRunner:
         """Run benchmark tests"""
         print("\n⚡ Running benchmarks...")
         
+        # Run benchmarks separately to avoid test setup issues
         cmd = [
-            "go", "test", "-v", "-bench=.", 
+            "go", "test", "-run=^$", "-bench=.", 
             "-benchmem", "-mod=readonly",
             "./..."
         ]
@@ -143,6 +159,62 @@ class TestRunner:
                     print(f"📈 {line.strip()}")
         else:
             print(f"❌ Benchmarks failed: {stderr}")
+        
+        return result
+    
+    def run_security_tests(self) -> Dict:
+        """Run security tests"""
+        print("\n🔒 Running security tests...")
+        
+        # Run security tests specifically
+        cmd = [
+            "go", "test", "-v", "-race",
+            "-tags", "security",
+            "-mod=readonly",
+            "./..."
+        ]
+        
+        exit_code, stdout, stderr = self.run_command(cmd)
+        
+        result = {
+            "exit_code": exit_code,
+            "stdout": stdout,
+            "stderr": stderr,
+            "success": exit_code == 0
+        }
+        
+        if exit_code == 0:
+            print("✅ Security tests passed")
+        else:
+            print(f"❌ Security tests failed: {stderr}")
+        
+        return result
+    
+    def run_performance_tests(self) -> Dict:
+        """Run performance tests"""
+        print("\n⚡ Running performance tests...")
+        
+        # Run performance tests specifically
+        cmd = [
+            "go", "test", "-v", "-race",
+            "-tags", "performance",
+            "-mod=readonly",
+            "./..."
+        ]
+        
+        exit_code, stdout, stderr = self.run_command(cmd)
+        
+        result = {
+            "exit_code": exit_code,
+            "stdout": stdout,
+            "stderr": stderr,
+            "success": exit_code == 0
+        }
+        
+        if exit_code == 0:
+            print("✅ Performance tests passed")
+        else:
+            print(f"❌ Performance tests failed: {stderr}")
         
         return result
     
@@ -253,6 +325,8 @@ class TestRunner:
         self.results["unit_tests"] = self.run_unit_tests()
         self.results["integration_tests"] = self.run_integration_tests()
         self.results["benchmarks"] = self.run_benchmarks()
+        self.results["security_tests"] = self.run_security_tests()
+        self.results["performance_tests"] = self.run_performance_tests()
         self.results["coverage"] = self.generate_coverage_report()
         self.results["static_analysis"] = self.run_static_analysis()
         
@@ -261,6 +335,8 @@ class TestRunner:
             self.results["unit_tests"]["success"] and
             self.results["integration_tests"]["success"] and
             self.results["benchmarks"]["success"] and
+            self.results["security_tests"]["success"] and
+            self.results["performance_tests"]["success"] and
             self.results["coverage"]["success"]
         )
         
@@ -301,6 +377,22 @@ class TestRunner:
             for line in bm['stdout'].split('\n'):
                 if 'Benchmark' in line and 'ns/op' in line:
                     report.append(f"  {line.strip()}")
+        report.append("")
+        
+        # Security Tests
+        report.append("## Security Tests")
+        st = self.results["security_tests"]
+        report.append(f"Status: {'✅ PASSED' if st['success'] else '❌ FAILED'}")
+        if st['stderr']:
+            report.append(f"Errors: {st['stderr']}")
+        report.append("")
+        
+        # Performance Tests
+        report.append("## Performance Tests")
+        pt = self.results["performance_tests"]
+        report.append(f"Status: {'✅ PASSED' if pt['success'] else '❌ FAILED'}")
+        if pt['stderr']:
+            report.append(f"Errors: {pt['stderr']}")
         report.append("")
         
         # Coverage
@@ -356,6 +448,8 @@ def main():
     print(f"  Unit Tests: {'✅' if results['unit_tests']['success'] else '❌'}")
     print(f"  Integration Tests: {'✅' if results['integration_tests']['success'] else '❌'}")
     print(f"  Benchmarks: {'✅' if results['benchmarks']['success'] else '❌'}")
+    print(f"  Security Tests: {'✅' if results['security_tests']['success'] else '❌'}")
+    print(f"  Performance Tests: {'✅' if results['performance_tests']['success'] else '❌'}")
     print(f"  Coverage: {'✅' if results['coverage']['success'] else '❌'}")
     
     print(f"\n📄 Reports generated:")

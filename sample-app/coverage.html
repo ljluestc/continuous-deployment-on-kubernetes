@@ -3,7 +3,7 @@
 <html>
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-		<title>gceme: Go Coverage Report</title>
+		<title>Go Coverage Report</title>
 		<style>
 			body {
 				background: black;
@@ -55,8 +55,6 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">gceme/main.go (76.8%)</option>
-				
 				</select>
 			</div>
 			<div id="legend">
@@ -77,186 +75,6 @@
 			</div>
 		</div>
 		<div id="content">
-		
-		<pre class="file" id="file0" style="display: none">/**
-# Copyright 2015 Google Inc. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-**/
-
-package main
-
-import (
-        "encoding/json"
-        "flag"
-        "fmt"
-        "html/template"
-        "io/ioutil"
-        "log"
-        "net/http"
-        "net/http/httputil"
-
-        "cloud.google.com/go/compute/metadata"
-)
-
-type Instance struct {
-        Id         string
-        Name       string
-        Version    string
-        Hostname   string
-        Zone       string
-        Project    string
-        InternalIP string
-        ExternalIP string
-        LBRequest  string
-        ClientIP   string
-        Error      string
-}
-
-const version string = "1.0.0"
-
-func main() <span class="cov1" title="1">{
-        showversion := flag.Bool("version", false, "display version")
-        frontend := flag.Bool("frontend", false, "run in frontend mode")
-        port := flag.Int("port", 8080, "port to bind")
-        backend := flag.String("backend-service", "http://127.0.0.1:8081", "hostname of backend server")
-        flag.Parse()
-
-        if *showversion </span><span class="cov1" title="1">{
-                fmt.Printf("Version %s\n", version)
-                return
-        }</span>
-
-        <span class="cov0" title="0">http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
-                fmt.Fprintf(w, "%s\n", version)
-        }</span>)
-
-        <span class="cov0" title="0">if *frontend </span><span class="cov0" title="0">{
-                frontendMode(*port, *backend)
-        }</span> else<span class="cov0" title="0"> {
-                backendMode(*port)
-        }</span>
-
-}
-
-func backendMode(port int) <span class="cov2" title="2">{
-        log.Println("Operating in backend mode...")
-        mux := http.NewServeMux()
-        mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) </span><span class="cov5" title="5">{
-                i := newInstance()
-                raw, _ := httputil.DumpRequest(r, true)
-                i.LBRequest = string(raw)
-                resp, _ := json.Marshal(i)
-                fmt.Fprintf(w, "%s", resp)
-        }</span>)
-        <span class="cov2" title="2">mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) </span><span class="cov1" title="1">{
-                w.WriteHeader(http.StatusOK)
-        }</span>)
-        <span class="cov2" title="2">log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), mux))</span>
-
-}
-
-func frontendMode(port int, backendURL string) <span class="cov4" title="3">{
-        log.Println("Operating in frontend mode...")
-        tpl := template.Must(template.New("out").Parse(html))
-
-        transport := http.Transport{DisableKeepAlives: false}
-        client := &amp;http.Client{Transport: &amp;transport}
-        req, _ := http.NewRequest(
-                "GET",
-                backendURL,
-                nil,
-        )
-        req.Close = false
-
-        mux := http.NewServeMux()
-        mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) </span><span class="cov4" title="4">{
-                i := &amp;Instance{}
-                resp, err := client.Do(req)
-                if err != nil </span><span class="cov1" title="1">{
-                        w.WriteHeader(http.StatusServiceUnavailable)
-                        fmt.Fprintf(w, "Error: %s\n", err.Error())
-                        return
-                }</span>
-                <span class="cov4" title="3">defer resp.Body.Close()
-                body, err := ioutil.ReadAll(resp.Body)
-                if err != nil </span><span class="cov0" title="0">{
-                        w.WriteHeader(http.StatusInternalServerError)
-                        fmt.Fprintf(w, "Error: %s\n", err.Error())
-                        return
-                }</span>
-                <span class="cov4" title="3">err = json.Unmarshal([]byte(body), i)
-                if err != nil </span><span class="cov1" title="1">{
-                        w.WriteHeader(http.StatusInternalServerError)
-                        fmt.Fprintf(w, "Error: %s\n", err.Error())
-                        return
-                }</span>
-                <span class="cov2" title="2">tpl.Execute(w, i)</span>
-        })
-
-        <span class="cov4" title="3">mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) </span><span class="cov2" title="2">{
-                resp, err := client.Do(req)
-                if err != nil </span><span class="cov1" title="1">{
-                        w.WriteHeader(http.StatusServiceUnavailable)
-                        fmt.Fprintf(w, "Backend could not be connected to: %s", err.Error())
-                        return
-                }</span>
-                <span class="cov1" title="1">defer resp.Body.Close()
-                ioutil.ReadAll(resp.Body)
-                w.WriteHeader(http.StatusOK)</span>
-        })
-        <span class="cov4" title="3">log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), mux))</span>
-}
-
-type assigner struct {
-        err error
-}
-
-func (a *assigner) assign(getVal func() (string, error)) string <span class="cov7" title="11">{
-        if a.err != nil </span><span class="cov4" title="3">{
-                return ""
-        }</span>
-        <span class="cov6" title="8">s, err := getVal()
-        if err != nil </span><span class="cov4" title="3">{
-                a.err = err
-        }</span>
-        <span class="cov6" title="8">return s</span>
-}
-
-func newInstance() *Instance <span class="cov10" title="25">{
-        var i = new(Instance)
-        i.Version = version
-
-        if !metadata.OnGCE() </span><span class="cov10" title="25">{
-                i.Error = "Not running on GCE"
-                return i
-        }</span>
-
-        <span class="cov0" title="0">a := &amp;assigner{}
-        i.Id = a.assign(metadata.InstanceID)
-        i.Zone = a.assign(metadata.Zone)
-        i.Name = a.assign(metadata.InstanceName)
-        i.Hostname = a.assign(metadata.Hostname)
-        i.Project = a.assign(metadata.ProjectID)
-        i.InternalIP = a.assign(metadata.InternalIP)
-        i.ExternalIP = a.assign(metadata.ExternalIP)
-
-        if a.err != nil </span><span class="cov0" title="0">{
-                i.Error = a.err.Error()
-        }</span>
-        <span class="cov0" title="0">return i</span>
-}
-</pre>
 		
 		</div>
 	</body>

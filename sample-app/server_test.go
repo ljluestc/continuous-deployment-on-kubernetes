@@ -1,3 +1,6 @@
+//go:build unit
+// +build unit
+
 /**
 # Copyright 2015 Google Inc. All rights reserved.
 #
@@ -286,19 +289,19 @@ func TestFrontendModeWithBackendReturningInvalidJSON(t *testing.T) {
 func TestMainFunction_Integration(t *testing.T) {
 	// This test verifies that the main function logic works correctly
 	// by testing the flag parsing and mode selection logic
-	
+
 	// Test version flag logic
 	showversion := false
 	frontend := false
 	port := 8080
 	backend := "http://127.0.0.1:8081"
-	
+
 	// Test version flag
 	if showversion {
 		// This would print version and return
 		t.Log("Version flag would print version and return")
 	}
-	
+
 	// Test frontend mode selection
 	if frontend {
 		// This would call frontendMode(*port, *backend)
@@ -307,7 +310,7 @@ func TestMainFunction_Integration(t *testing.T) {
 		// This would call backendMode(*port)
 		t.Logf("Backend mode would be called with port %d", port)
 	}
-	
+
 	// Test that the global version handler would be registered
 	t.Log("Global version handler would be registered")
 }

@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 /**
@@ -25,6 +26,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -363,7 +365,8 @@ func TestIntegration_VersionConsistency_SameVersion(t *testing.T) {
 
 // TestIntegration_StressTest tests system under stress
 func TestIntegration_StressTest_SustainedLoad(t *testing.T) {
-	if testing.Short() {
+	// Skip stress test in short mode to avoid benchmark issues
+	if len(os.Args) > 0 && strings.Contains(strings.Join(os.Args, " "), "-short") {
 		t.Skip("Skipping stress test in short mode")
 	}
 

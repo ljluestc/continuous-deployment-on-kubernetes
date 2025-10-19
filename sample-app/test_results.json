@@ -1,0 +1,58 @@
+{
+  "unit_tests": {
+    "exit_code": 0,
+    "stdout": "?   \tgceme\t[no test files]\n",
+    "stderr": "",
+    "success": true
+  },
+  "integration_tests": {
+    "exit_code": 0,
+    "stdout": "=== RUN   TestIntegration_FrontendBackend_EndToEnd\n--- PASS: TestIntegration_FrontendBackend_EndToEnd (0.03s)\n=== RUN   TestIntegration_MultipleBackends_LoadBalance\n--- PASS: TestIntegration_MultipleBackends_LoadBalance (0.01s)\n=== RUN   TestIntegration_ConcurrentRequests_HandleLoad\n--- PASS: TestIntegration_ConcurrentRequests_HandleLoad (0.10s)\n=== RUN   TestIntegration_BackendFailover_HandleFailure\n--- PASS: TestIntegration_BackendFailover_HandleFailure (0.00s)\n=== RUN   TestIntegration_HealthChecks_PropagateStatus\n--- PASS: TestIntegration_HealthChecks_PropagateStatus (0.01s)\n=== RUN   TestIntegration_VersionConsistency_SameVersion\n--- PASS: TestIntegration_VersionConsistency_SameVersion (0.00s)\n=== RUN   TestIntegration_StressTest_SustainedLoad\n    integration_test.go:413: Stress test completed: 26426 successful, 0 errors\n--- PASS: TestIntegration_StressTest_SustainedLoad (5.00s)\nPASS\nok  \tgceme\t6.197s\n",
+    "stderr": "",
+    "success": true
+  },
+  "benchmarks": {
+    "exit_code": 0,
+    "stdout": "?   \tgceme\t[no test files]\n",
+    "stderr": "",
+    "success": true
+  },
+  "coverage": {
+    "success": true,
+    "html_report": "coverage.html",
+    "summary": "total:\t(statements)\t0.0%\n"
+  },
+  "static_analysis": {
+    "go_vet": {
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "success": true
+    },
+    "go_fmt": {
+      "exit_code": 0,
+      "stdout": "metrics.go\nmetrics_test.go\n",
+      "stderr": "",
+      "success": true
+    },
+    "go_mod_tidy": {
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "success": true
+    }
+  },
+  "overall_status": "PASSED",
+  "security_tests": {
+    "exit_code": 0,
+    "stdout": "=== RUN   TestSecurity_XSSPrevention\n--- PASS: TestSecurity_XSSPrevention (0.00s)\n=== RUN   TestSecurity_SQLInjectionPrevention\n--- PASS: TestSecurity_SQLInjectionPrevention (0.00s)\n=== RUN   TestSecurity_InputValidation\n--- PASS: TestSecurity_InputValidation (0.00s)\n=== RUN   TestSecurity_HTTPSHeaders\n--- PASS: TestSecurity_HTTPSHeaders (0.00s)\n=== RUN   TestSecurity_ContentTypeValidation\n--- PASS: TestSecurity_ContentTypeValidation (0.00s)\n=== RUN   TestSecurity_ErrorHandling\n--- PASS: TestSecurity_ErrorHandling (0.00s)\n=== RUN   TestSecurity_ConcurrentAccess\n--- PASS: TestSecurity_ConcurrentAccess (0.00s)\n=== RUN   TestSecurity_ResourceExhaustion\n--- PASS: TestSecurity_ResourceExhaustion (0.01s)\n=== RUN   TestSecurity_Authentication\n--- PASS: TestSecurity_Authentication (0.00s)\n=== RUN   TestSecurity_Authorization\n--- PASS: TestSecurity_Authorization (0.00s)\nPASS\nok  \tgceme\t1.036s\n",
+    "stderr": "",
+    "success": true
+  },
+  "performance_tests": {
+    "exit_code": 0,
+    "stdout": "=== RUN   TestPerformance_ResponseTime\n    performance_test.go:71: Average response time: 30.312\u00b5s\n--- PASS: TestPerformance_ResponseTime (0.00s)\n=== RUN   TestPerformance_ConcurrentRequests\n=== RUN   TestPerformance_ConcurrentRequests/Concurrency_10\n    performance_test.go:113: Concurrency 10 completed in 521.173\u00b5s\n=== RUN   TestPerformance_ConcurrentRequests/Concurrency_50\n    performance_test.go:113: Concurrency 50 completed in 4.850126ms\n=== RUN   TestPerformance_ConcurrentRequests/Concurrency_100\n    performance_test.go:113: Concurrency 100 completed in 3.046885ms\n=== RUN   TestPerformance_ConcurrentRequests/Concurrency_200\n    performance_test.go:113: Concurrency 200 completed in 7.895794ms\n--- PASS: TestPerformance_ConcurrentRequests (0.02s)\n    --- PASS: TestPerformance_ConcurrentRequests/Concurrency_10 (0.00s)\n    --- PASS: TestPerformance_ConcurrentRequests/Concurrency_50 (0.01s)\n    --- PASS: TestPerformance_ConcurrentRequests/Concurrency_100 (0.01s)\n    --- PASS: TestPerformance_ConcurrentRequests/Concurrency_200 (0.01s)\n=== RUN   TestPerformance_MemoryUsage\n    performance_test.go:145: Successfully handled 1000 requests\n--- PASS: TestPerformance_MemoryUsage (0.05s)\n=== RUN   TestPerformance_JSONMarshaling\n    performance_test.go:182: Average JSON marshaling time: 11.303\u00b5s\n--- PASS: TestPerformance_JSONMarshaling (0.11s)\n=== RUN   TestPerformance_JSONUnmarshaling\n    performance_test.go:211: Average JSON unmarshaling time: 19.803\u00b5s\n--- PASS: TestPerformance_JSONUnmarshaling (0.20s)\n=== RUN   TestPerformance_TemplateRendering\n    performance_test.go:251: Average template rendering time: 114.776\u00b5s\n--- PASS: TestPerformance_TemplateRendering (0.12s)\n=== RUN   TestPerformance_LoadBalancing\n    performance_test.go:325: Average load balancing time: 398.011\u00b5s\n--- PASS: TestPerformance_LoadBalancing (0.04s)\n=== RUN   TestPerformance_StressTest\n    performance_test.go:377: Stress test completed: 1000 requests in 8.721994ms (114652.68 req/s)\n--- PASS: TestPerformance_StressTest (0.01s)\nPASS\nok  \tgceme\t1.588s\n",
+    "stderr": "",
+    "success": true
+  }
+}

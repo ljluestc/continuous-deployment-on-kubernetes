@@ -1,0 +1,49 @@
+{
+  "test_settings": {
+    "timeout_seconds": 30,
+    "concurrent_requests": 10,
+    "stress_test_duration": "5s",
+    "benchmark_iterations": 1000000
+  },
+  "test_data": {
+    "valid_instance": {
+      "name": "test-instance",
+      "version": "1.0.0",
+      "id": "test-123",
+      "zone": "us-central1-a",
+      "project": "test-project",
+      "hostname": "test.example.com",
+      "internal_ip": "10.0.0.1",
+      "external_ip": "35.192.0.1"
+    },
+    "invalid_instance": {
+      "name": "",
+      "version": "",
+      "id": "",
+      "zone": "",
+      "project": "",
+      "hostname": "",
+      "internal_ip": "",
+      "external_ip": ""
+    }
+  },
+  "test_scenarios": {
+    "unit_tests": {
+      "enabled": true,
+      "coverage_threshold": 80
+    },
+    "integration_tests": {
+      "enabled": true,
+      "timeout": "60s"
+    },
+    "benchmark_tests": {
+      "enabled": true,
+      "min_iterations": 1000
+    },
+    "stress_tests": {
+      "enabled": true,
+      "duration": "30s",
+      "concurrent_users": 100
+    }
+  }
+}

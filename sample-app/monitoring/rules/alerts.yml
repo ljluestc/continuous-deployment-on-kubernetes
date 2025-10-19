@@ -1,0 +1,137 @@
+groups:
+  - name: sample-app
+    rules:
+      - alert: HighErrorRate
+        expr: rate(error_count_total[5m]) / rate(request_count_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+
+      - alert: VeryHighErrorRate
+        expr: rate(error_count_total[5m]) / rate(request_count_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Very high error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+
+      - alert: HighResponseTime
+        expr: avg_response_time_seconds > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "Average response time is {{ $value }}s"
+
+      - alert: VeryHighResponseTime
+        expr: avg_response_time_seconds > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Very high response time detected"
+          description: "Average response time is {{ $value }}s"
+
+      - alert: ServiceDown
+        expr: up{job="sample-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Sample app is down"
+          description: "Sample app has been down for more than 1 minute"
+
+      - alert: NoRequests
+        expr: rate(request_count_total[10m]) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No requests received"
+          description: "No requests have been received for 10 minutes"
+
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes / 1024 / 1024) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}MB"
+
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value | humanizePercentage }}"
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is {{ $value | humanizePercentage }} available"
+
+      - alert: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod is crash looping"
+          description: "Pod {{ $labels.pod }} is restarting frequently"
+
+      - alert: PodNotReady
+        expr: kube_pod_status_phase{phase="Running"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod is not ready"
+          description: "Pod {{ $labels.pod }} is not in Running state"
+
+      - alert: DeploymentReplicasMismatch
+        expr: kube_deployment_status_replicas_available != kube_deployment_spec_replicas
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Deployment replicas mismatch"
+          description: "Deployment {{ $labels.deployment }} has {{ $value }} available replicas but {{ $labels.spec_replicas }} desired"
+
+      - alert: ServiceEndpointDown
+        expr: up{job="kubernetes-service-endpoints"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Service endpoint is down"
+          description: "Service endpoint {{ $labels.instance }} is down"
+
+      - alert: KubernetesNodeDown
+        expr: up{job="kubernetes-nodes"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kubernetes node is down"
+          description: "Kubernetes node {{ $labels.instance }} is down"
+
+      - alert: KubernetesAPIServerDown
+        expr: up{job="kubernetes-apiservers"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kubernetes API server is down"
+          description: "Kubernetes API server {{ $labels.instance }} is down"
