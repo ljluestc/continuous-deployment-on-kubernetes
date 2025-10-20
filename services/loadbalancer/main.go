@@ -57,6 +57,21 @@ func (s *ServerPool) NextIndex() int {
 
 // GetNextPeer returns the next active peer using round-robin
 func (s *ServerPool) GetNextPeer() *Backend {
+	return s.GetNextPeerWithCache(nil)
+}
+
+// GetNextPeerWithCache returns next active peer using routing cache
+func (s *ServerPool) GetNextPeerWithCache(routingCache *RoutingCache) *Backend {
+	// Try cache first
+	if routingCache != nil {
+		if cached, found := routingCache.Get(); found && len(cached) > 0 {
+			// Use cached active backends for faster selection
+			next := int(atomic.AddUint64(&s.current, 1) % uint64(len(cached)))
+			return cached[next]
+		}
+	}
+
+	// Fallback to full scan
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -64,31 +79,42 @@ func (s *ServerPool) GetNextPeer() *Backend {
 		return nil
 	}
 
-	// Start from next index
-	next := s.NextIndex()
-	l := len(s.backends) + next
-
-	for i := next; i < l; i++ {
-		idx := i % len(s.backends)
-		if s.backends[idx].IsAlive() {
-			if i != next {
-				atomic.StoreUint64(&s.current, uint64(idx))
-			}
-			return s.backends[idx]
+	// Collect active backends
+	var activeBackends []*Backend
+	for _, b := range s.backends {
+		if b.IsAlive() {
+			activeBackends = append(activeBackends, b)
 		}
 	}
-	return nil
+
+	if len(activeBackends) == 0 {
+		return nil
+	}
+
+	// Update cache
+	if routingCache != nil {
+		routingCache.Set(activeBackends)
+	}
+
+	// Select from active backends
+	next := int(atomic.AddUint64(&s.current, 1) % uint64(len(activeBackends)))
+	return activeBackends[next]
 }
 
 // HealthCheck pings the backends and updates the status
 func (s *ServerPool) HealthCheck() {
+	s.HealthCheckWithCache(nil, nil)
+}
+
+// HealthCheckWithCache pings backends using connection pool and cache
+func (s *ServerPool) HealthCheckWithCache(pool *ConnectionPool, healthCache *HealthCache) {
 	s.mu.RLock()
 	backends := make([]*Backend, len(s.backends))
 	copy(backends, s.backends)
 	s.mu.RUnlock()
 
 	for _, b := range backends {
-		alive := isBackendAlive(b.URL)
+		alive := isBackendAliveWithPool(b.URL, pool, healthCache)
 		b.SetAlive(alive)
 		if alive {
 			log.Printf("Backend %s is alive", b.URL)
@@ -107,31 +133,71 @@ func (s *ServerPool) GetBackends() []*Backend {
 
 // isBackendAlive checks if a backend is alive
 func isBackendAlive(u *url.URL) bool {
+	return isBackendAliveWithPool(u, nil, nil)
+}
+
+// isBackendAliveWithPool checks if a backend is alive using connection pool and cache
+func isBackendAliveWithPool(u *url.URL, pool *ConnectionPool, healthCache *HealthCache) bool {
+	urlStr := u.String()
+
+	// Check cache first
+	if healthCache != nil {
+		if alive, found := healthCache.Get(urlStr); found {
+			return alive
+		}
+	}
+
+	// Perform health check
+	start := time.Now()
 	timeout := 2 * time.Second
-	client := http.Client{
-		Timeout: timeout,
+
+	var client *http.Client
+	if pool != nil {
+		client = pool.Get(u, timeout)
+	} else {
+		client = &http.Client{Timeout: timeout}
 	}
 
-	resp, err := client.Get(u.String() + "/health")
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
+	resp, err := client.Get(urlStr + "/health")
+	latency := time.Since(start)
 
-	return resp.StatusCode == http.StatusOK
+	alive := err == nil && resp != nil && resp.StatusCode == http.StatusOK
+	if resp != nil {
+		resp.Body.Close()
+	}
+
+	// Store in cache
+	if healthCache != nil {
+		healthCache.Set(urlStr, alive, latency)
+	}
+
+	return alive
 }
 
 // LoadBalancer represents the load balancer
 type LoadBalancer struct {
-	serverPool *ServerPool
+	serverPool     *ServerPool
+	cacheManager   *CacheManager
+	connectionPool *ConnectionPool
 }
 
 // NewLoadBalancer creates a new load balancer
 func NewLoadBalancer() *LoadBalancer {
+	cacheConfig := DefaultCacheConfig()
+	poolConfig := PoolConfig{
+		MaxIdleConns:    10,
+		MaxLifetime:     60 * time.Second,
+		IdleTimeout:     30 * time.Second,
+		CleanupInterval: 10 * time.Second,
+		RequestTimeout:  2 * time.Second,
+	}
+
 	return &LoadBalancer{
 		serverPool: &ServerPool{
 			backends: []*Backend{},
 		},
+		cacheManager:   NewCacheManager(cacheConfig),
+		connectionPool: NewConnectionPool(poolConfig),
 	}
 }
 
@@ -150,12 +216,17 @@ func (lb *LoadBalancer) AddBackend(urlStr string) error {
 	}
 
 	lb.serverPool.AddBackend(backend)
+
+	// Invalidate caches when backend is added
+	lb.cacheManager.Routing().Invalidate()
+	lb.cacheManager.Stats().Invalidate()
+
 	return nil
 }
 
 // ServeHTTP handles incoming requests
 func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	peer := lb.serverPool.GetNextPeer()
+	peer := lb.serverPool.GetNextPeerWithCache(lb.cacheManager.Routing())
 	if peer != nil {
 		peer.ReverseProxy.ServeHTTP(w, r)
 		atomic.AddInt64(&peer.SuccessCount, 1)
@@ -170,13 +241,21 @@ func (lb *LoadBalancer) StartHealthCheck(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	go func() {
 		for range ticker.C {
-			lb.serverPool.HealthCheck()
+			lb.serverPool.HealthCheckWithCache(lb.connectionPool, lb.cacheManager.Health())
+			// Invalidate routing cache after health check
+			lb.cacheManager.Routing().Invalidate()
 		}
 	}()
 }
 
 // GetStats returns statistics about the backends
 func (lb *LoadBalancer) GetStats() []map[string]interface{} {
+	// Try cache first
+	if cached, found := lb.cacheManager.Stats().Get(); found {
+		return cached
+	}
+
+	// Compute stats
 	backends := lb.serverPool.GetBackends()
 	stats := make([]map[string]interface{}, len(backends))
 
@@ -188,6 +267,9 @@ func (lb *LoadBalancer) GetStats() []map[string]interface{} {
 			"fail_count":    atomic.LoadInt64(&b.FailCount),
 		}
 	}
+
+	// Cache the result
+	lb.cacheManager.Stats().Set(stats)
 
 	return stats
 }
@@ -228,6 +310,17 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
 }
 
+func cacheMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	metrics := map[string]interface{}{
+		"cache_metrics": lb.cacheManager.GetAllMetrics(),
+		"pool_metrics":  lb.connectionPool.GetMetrics(),
+	}
+
+	json.NewEncoder(w).Encode(metrics)
+}
+
 func main() {
 	lb = NewLoadBalancer()
 
@@ -237,10 +330,15 @@ func main() {
 	http.HandleFunc("/add-backend", addBackendHandler)
 	http.HandleFunc("/stats", statsHandler)
 	http.HandleFunc("/health", healthHandler)
+	http.HandleFunc("/cache-metrics", cacheMetricsHandler)
 	http.HandleFunc("/", lb.ServeHTTP)
 
 	port := ":8082"
 	log.Printf("Load balancer starting on %s", port)
+	log.Printf("Caching enabled - Health: %v, Stats: %v, Routing: %v",
+		lb.cacheManager.config.HealthCacheEnabled,
+		lb.cacheManager.config.StatsCacheEnabled,
+		lb.cacheManager.config.RoutingCacheEnabled)
 	log.Fatal(http.ListenAndServe(port, nil))
 }
 

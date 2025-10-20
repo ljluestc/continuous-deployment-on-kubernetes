@@ -1,0 +1,457 @@
+name: Comprehensive CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  GO_VERSION: '1.21'
+  MIN_COVERAGE: 80
+  TARGET_COVERAGE: 100
+
+jobs:
+  # Lint and format checks
+  lint:
+    name: Lint and Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+      
+      - name: Run golangci-lint
+        run: |
+          find . -name "go.mod" -execdir golangci-lint run --timeout=5m \;
+      
+      - name: Check Go formatting
+        run: |
+          find . -name "*.go" -exec gofmt -l {} \; | tee /tmp/gofmt-output
+          if [ -s /tmp/gofmt-output ]; then
+            echo "The following files are not formatted:"
+            cat /tmp/gofmt-output
+            exit 1
+          fi
+      
+      - name: Run go vet
+        run: |
+          find . -name "go.mod" -execdir go vet ./... \;
+
+  # Test individual services
+  test-sample-app:
+    name: Test Sample App
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run tests
+        working-directory: ./sample-app
+        run: |
+          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+      
+      - name: Check coverage
+        working-directory: ./sample-app
+        run: |
+          coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Coverage: $coverage%"
+          if (( $(echo "$coverage < $MIN_COVERAGE" | bc -l) )); then
+            echo "❌ Coverage $coverage% is below minimum $MIN_COVERAGE%"
+            exit 1
+          fi
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./sample-app/coverage.out
+          flags: sample-app
+          name: sample-app-coverage
+
+  test-google-docs:
+    name: Test Google Docs Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run tests
+        working-directory: ./services/googledocs
+        run: |
+          go test -tags=unit -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/googledocs/coverage.out
+          flags: googledocs
+          name: googledocs-coverage
+
+  test-quora:
+    name: Test Quora Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run tests
+        working-directory: ./services/quora
+        run: |
+          go test -tags=unit -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/quora/coverage.out
+          flags: quora
+          name: quora-coverage
+
+  test-messaging:
+    name: Test Messaging Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run tests
+        working-directory: ./services/messaging
+        run: |
+          go test -tags=unit -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/messaging/coverage.out
+          flags: messaging
+          name: messaging-coverage
+
+  test-dns:
+    name: Test DNS Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run tests
+        working-directory: ./services/dns
+        run: |
+          go test -tags=unit -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/dns/coverage.out
+          flags: dns
+          name: dns-coverage
+
+  test-webcrawler:
+    name: Test Web Crawler Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run tests
+        working-directory: ./services/webcrawler
+        run: |
+          go test -tags=unit -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/webcrawler/coverage.out
+          flags: webcrawler
+          name: webcrawler-coverage
+
+  test-newsfeed:
+    name: Test Newsfeed Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run tests
+        working-directory: ./services/newsfeed
+        run: |
+          go test -tags=unit -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/newsfeed/coverage.out
+          flags: newsfeed
+          name: newsfeed-coverage
+
+  test-loadbalancer:
+    name: Test Load Balancer Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run tests
+        working-directory: ./services/loadbalancer
+        run: |
+          go test -tags=unit -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/loadbalancer/coverage.out
+          flags: loadbalancer
+          name: loadbalancer-coverage
+
+  test-tinyurl:
+    name: Test TinyURL Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run tests
+        working-directory: ./services/tinyurl
+        run: |
+          go test -tags=unit -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/tinyurl/coverage.out
+          flags: tinyurl
+          name: tinyurl-coverage
+
+  test-typeahead:
+    name: Test Typeahead Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run tests
+        working-directory: ./services/typeahead
+        run: |
+          go test -tags=unit -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/typeahead/coverage.out
+          flags: typeahead
+          name: typeahead-coverage
+
+  # Comprehensive test report
+  comprehensive-test:
+    name: Comprehensive Test Report
+    runs-on: ubuntu-latest
+    needs: [test-sample-app, test-google-docs, test-quora, test-messaging, test-dns, test-webcrawler, test-newsfeed, test-loadbalancer, test-tinyurl, test-typeahead]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run comprehensive tests
+        run: |
+          python3 test_all_systems.py
+      
+      - name: Generate coverage report
+        run: |
+          echo "# Test Coverage Report" > coverage-report.md
+          echo "" >> coverage-report.md
+          echo "Generated at: $(date)" >> coverage-report.md
+          echo "" >> coverage-report.md
+          python3 -c "
+          import json
+          with open('test_all_systems_results.json', 'r') as f:
+              data = json.load(f)
+              print(f'Overall Status: {data[\"overall_status\"]}')
+              print(f'Passed: {data[\"passed\"]}/{data[\"total\"]}')
+              print(f'Average Coverage: {data[\"average_coverage\"]}%')
+          " >> coverage-report.md
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test_all_systems_results.json
+            coverage-report.md
+          retention-days: 30
+
+  # Security scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: '-no-fail -fmt sarif -out results.sarif ./...'
+      
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+
+  # Build and push Docker images (only on main/master)
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint, comprehensive-test, security-scan]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    strategy:
+      matrix:
+        service:
+          - name: sample-app
+            path: ./sample-app
+          - name: googledocs
+            path: ./services/googledocs
+          - name: quora
+            path: ./services/quora
+          - name: messaging
+            path: ./services/messaging
+          - name: dns
+            path: ./services/dns
+          - name: webcrawler
+            path: ./services/webcrawler
+          - name: newsfeed
+            path: ./services/newsfeed
+          - name: loadbalancer
+            path: ./services/loadbalancer
+          - name: tinyurl
+            path: ./services/tinyurl
+          - name: typeahead
+            path: ./services/typeahead
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.path }}
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/k8s-${{ matrix.service.name }}:latest
+            ${{ secrets.DOCKER_USERNAME }}/k8s-${{ matrix.service.name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Deploy to Kubernetes (only on main/master)
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+      
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=./kubeconfig
+      
+      - name: Deploy services
+        run: |
+          export KUBECONFIG=./kubeconfig
+          kubectl apply -f sample-app/k8s/production/
+          kubectl rollout status deployment/sample-app-production
+      
+      - name: Verify deployment
+        run: |
+          export KUBECONFIG=./kubeconfig
+          kubectl get pods
+          kubectl get services
+
+  # Notification
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [comprehensive-test]
+    if: always()
+    steps:
+      - name: Send notification
+        run: |
+          echo "Build status: ${{ needs.comprehensive-test.result }}"
+          # Add Slack/email notification here if needed
+
