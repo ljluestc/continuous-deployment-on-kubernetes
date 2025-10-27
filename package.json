@@ -1,0 +1,25 @@
+{
+  "name": "continuous-deployment-on-kubernetes",
+  "version": "1.0.0",
+  "description": "For a more in depth best practices guide, go to the solution posted [here](https://cloud.google.com/solutions/jenkins-on-container-engine).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "npm run -s test:all",
+    "test:pw": "playwright test --reporter=line",
+    "test:go": "bash scripts/run-go-tests.sh",
+    "test:all": "npm -s run test:pw && npm -s run test:go",
+    "prepare": "husky install"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "husky": "^9.1.7",
+    "nyc": "^17.1.0"
+  }
+}
